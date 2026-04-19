@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/AndreeJait/kyan/internal/scaffold"
@@ -11,11 +12,25 @@ import (
 )
 
 var initCmd = &cobra.Command{
-	Use:   "init <project-name>",
+	Use:   "init [project-name]",
 	Short: "Create a new hexagonal Go project from go-hex-boilerplate",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		projectName := args[0]
+		var projectName string
+		currentDir := false
+
+		if len(args) == 1 {
+			projectName = args[0]
+		} else {
+			// No argument: init in current directory
+			currentDir = true
+			dir, err := os.Getwd()
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "error: could not determine current directory: %v\n", err)
+				return
+			}
+			projectName = filepath.Base(dir)
+		}
 
 		// Validate project name
 		if strings.Contains(projectName, "/") || strings.Contains(projectName, " ") {
@@ -31,6 +46,7 @@ var initCmd = &cobra.Command{
 			ProjectName: projectName,
 			KeepTodo:    keepTodo,
 			KeepAuth:    keepAuth,
+			CurrentDir:  currentDir,
 		}
 
 		if err := scaffold.Init(opts); err != nil {

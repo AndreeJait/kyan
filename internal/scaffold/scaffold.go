@@ -18,23 +18,69 @@ type InitOptions struct {
 	ProjectName string
 	KeepTodo    bool
 	KeepAuth    bool
+	CurrentDir  bool // when true, init in current directory instead of creating a new one
 }
 
 func Init(opts InitOptions) error {
-	projectDir := opts.ProjectName
+	var projectDir string
 
-	// 1. Clone boilerplate
-	fmt.Printf("Cloning %s into %s...\n", boilerplateRepo, projectDir)
-	_, err := git.PlainClone(projectDir, false, &git.CloneOptions{
-		URL: boilerplateRepo,
-	})
-	if err != nil {
-		return fmt.Errorf("could not clone boilerplate: %w", err)
-	}
+	if opts.CurrentDir {
+		// Clone into a temp directory, then move contents into current dir
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("could not determine current directory: %w", err)
+		}
+		projectDir = cwd
+		opts.ProjectName = filepath.Base(cwd)
 
-	// 2. Remove .git so the new project starts fresh
-	if err := os.RemoveAll(filepath.Join(projectDir, ".git")); err != nil {
-		return fmt.Errorf("could not remove .git: %w", err)
+		// Clone into temp dir first
+		tmpDir, err := os.MkdirTemp("", "kyan-*")
+		if err != nil {
+			return fmt.Errorf("could not create temp directory: %w", err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		fmt.Printf("Cloning %s...\n", boilerplateRepo)
+		_, err = git.PlainClone(tmpDir, false, &git.CloneOptions{
+			URL: boilerplateRepo,
+		})
+		if err != nil {
+			return fmt.Errorf("could not clone boilerplate: %w", err)
+		}
+
+		// Remove .git from clone
+		if err := os.RemoveAll(filepath.Join(tmpDir, ".git")); err != nil {
+			return fmt.Errorf("could not remove .git: %w", err)
+		}
+
+		// Move all contents from tmpDir to projectDir (current dir)
+		entries, err := os.ReadDir(tmpDir)
+		if err != nil {
+			return fmt.Errorf("could not read cloned directory: %w", err)
+		}
+		for _, entry := range entries {
+			src := filepath.Join(tmpDir, entry.Name())
+			dst := filepath.Join(projectDir, entry.Name())
+			if err := os.Rename(src, dst); err != nil {
+				return fmt.Errorf("could not move %s: %w", entry.Name(), err)
+			}
+		}
+	} else {
+		projectDir = opts.ProjectName
+
+		// 1. Clone boilerplate
+		fmt.Printf("Cloning %s into %s...\n", boilerplateRepo, projectDir)
+		_, err := git.PlainClone(projectDir, false, &git.CloneOptions{
+			URL: boilerplateRepo,
+		})
+		if err != nil {
+			return fmt.Errorf("could not clone boilerplate: %w", err)
+		}
+
+		// 2. Remove .git so the new project starts fresh
+		if err := os.RemoveAll(filepath.Join(projectDir, ".git")); err != nil {
+			return fmt.Errorf("could not remove .git: %w", err)
+		}
 	}
 
 	// 3. Optionally remove template modules
