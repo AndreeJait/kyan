@@ -13,7 +13,7 @@ kyan init <project-name>
 ```
 
 - Clones the go-hex-boilerplate repository into a new directory
-- Prompts whether to keep the **todo** template module — if declined, removes `domain/entity/todo.go`, `domain/error/todo.go`, `port/inbound/todo/`, `port/outbound/todo.go`, `usecase/todo.go`, `adapter/outbound/todo/`, `adapter/inbound/*/todo.go`, and all todo-related wiring/routes
+  - Prompts whether to keep the **todo** template module — if declined, removes `domain/entity/todo.go`, `domain/error/todo.go`, `port/inbound/todo/`, `port/outbound/todo.go`, `usecase/todo.go`, `adapter/outbound/todo/`, `adapter/inbound/*/todo.go`, and all todo-related wiring/routes
 - Prompts whether to keep the **auth** template module — if declined, removes `domain/entity/user.go`, `domain/error/auth.go`, `port/inbound/auth/`, `port/outbound/user.go`, `usecase/auth.go`, `adapter/outbound/user/`, `adapter/inbound/*/auth.go`, and all auth-related wiring/routes
 - Rewrites `go.mod` to use the new module path
 - Cleans up vendor and re-vendors dependencies
