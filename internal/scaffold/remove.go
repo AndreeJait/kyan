@@ -347,10 +347,6 @@ func removeAuthFromAdapterRouter(dir, engine string) error {
 	}
 	content = []byte(strings.Join(filtered, "\n"))
 
-	// Remove auth params from RegisterRoutes
-	content = removeLineContaining(content, "rbac *authw.RBAC,")
-	content = removeLineContaining(content, "authenticator authw.Authenticator)")
-
 	// Remove auth middleware group/subrouter setup
 	content = removeLineContaining(content, "protected :=")
 	content = removeLineContaining(content, "protected =")
@@ -504,9 +500,9 @@ func removeBlockContaining(content []byte, startMarker string) []byte {
 			skip = true
 		}
 		if skip {
-			// Find closing brace for the struct field
+			// Find closing brace for the struct field (may have struct tags after })
 			trimmed := strings.TrimSpace(line)
-			if trimmed == "}," || trimmed == "}" {
+			if strings.HasPrefix(trimmed, "}") {
 				skip = false
 				continue
 			}
