@@ -405,9 +405,9 @@ func removeAuthFromConfig(dir string) error {
 
 	// Remove Auth struct field
 	content = removeBlockContaining(content, "Auth struct {")
-	// Remove Auth defaults
-	content = removeLineContaining(content, "cfg.Auth.JWTTTL")
-	content = removeLineContaining(content, "cfg.Auth.JWTIssuer")
+	// Remove Auth defaults (entire if-blocks)
+	content = removeBlockContaining(content, "cfg.Auth.JWTTTL")
+	content = removeBlockContaining(content, "cfg.Auth.JWTIssuer")
 
 	if err := writeFile(configPath, content); err != nil {
 		return err
