@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/AndreeJait/kyan/internal/generator"
+	"github.com/AndreeJait/kyan/internal/scaffold"
 	"github.com/AndreeJait/kyan/internal/template"
 	"github.com/spf13/cobra"
 )
@@ -71,6 +72,7 @@ var generateModuleCmd = &cobra.Command{
 
 		fmt.Printf("\nModule %s generated successfully!\n", vars.ModuleName)
 		fmt.Println("Run 'go mod tidy' to ensure dependencies are up to date.")
+		fmt.Println("Run 'kyan generate swagger' to update API documentation.")
 	},
 }
 
@@ -110,5 +112,30 @@ func init() {
 	generateModuleCmd.Flags().BoolVar(&withAuth, "auth", false, "add RBAC permission checks on routes")
 
 	generateCmd.AddCommand(generateModuleCmd)
+	generateCmd.AddCommand(generateSwaggerCmd)
 	rootCmd.AddCommand(generateCmd)
+}
+
+var generateSwaggerCmd = &cobra.Command{
+	Use:   "swagger",
+	Short: "Regenerate swagger docs from source annotations",
+	Run: func(cmd *cobra.Command, args []string) {
+		projectDir, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "error: could not determine working directory: %v\n", err)
+			return
+		}
+
+		if err := validateHexProject(projectDir); err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "error: %v\n", err)
+			return
+		}
+
+		if err := scaffold.RegenerateSwagger(projectDir); err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "error: %v\n", err)
+			return
+		}
+
+		fmt.Println("Swagger docs regenerated successfully!")
+	},
 }

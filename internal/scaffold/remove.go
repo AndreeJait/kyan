@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -104,11 +105,20 @@ func removeTodoFromService(dir string) error {
 		return err
 	}
 
-	// Remove todo-related imports
-	content = removeImportLine(content, `"github.com/AndreeJait/`+"*"+`/adapter/outbound/todo"`)
-	content = removeImportLine(content, `"github.com/AndreeJait/`+"*"+`/port/inbound/todo"`)
-	content = removeImportLine(content, `"github.com/redis/go-redis/v9"`) // may still be needed if auth uses it
-	content = removeImportLine(content, `"gorm.io/gorm"`)
+	// Remove todo-related imports (split and filter approach for reliable substring matching)
+	lines := strings.Split(string(content), "\n")
+	var filtered []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, `/adapter/outbound/todo"`) {
+			continue
+		}
+		if strings.Contains(trimmed, `/port/inbound/todo"`) {
+			continue
+		}
+		filtered = append(filtered, line)
+	}
+	content = []byte(strings.Join(filtered, "\n"))
 
 	// Remove todo provider lines
 	content = removeLineContaining(content, "c.Provide(newTodoRepository)")
@@ -129,27 +139,7 @@ func removeTodoFromRouter(dir string) error {
 		return err
 	}
 
-	// Remove todo imports
-	content = removeImportLine(content, `"github.com/AndreeJait/`+"*"+`/port/inbound/todo"`)
-
-	// Remove todo params from newRouter
-	content = removeLineContaining(content, "todoUC todo.UseCase,")
-
-	// Remove RegisterAuthRoutes calls
-	content = removeLineContaining(content, "RegisterAuthRoutes")
-
-	// Remove todoUC from RegisterRoutes calls — need to handle patterns like:
-	// echoAdapter.RegisterRoutes(e, healthUC, todoUC, rbac, authenticator)
-	// → echoAdapter.RegisterRoutes(e, healthUC, rbac, authenticator)
-	// Remove todoUC, parameter from RegisterRoutes calls
-	content = bytes.ReplaceAll(content, []byte("healthUC, todoUC, rbac, authenticator)"), []byte("healthUC, rbac, authenticator)"))
-
-	// Remove RegisterAuthRoutes calls for each engine
-	content = removeLineContaining(content, "RegisterAuthRoutes(e, authUC)")
-	content = removeLineContaining(content, "RegisterAuthRoutes(r, authUC)")
-	content = removeLineContaining(content, "RegisterAuthRoutes(m, authUC)")
-
-	// Remove todo import
+	// Remove todo imports (split and filter approach)
 	lines := strings.Split(string(content), "\n")
 	var filtered []string
 	for _, line := range lines {
@@ -160,6 +150,14 @@ func removeTodoFromRouter(dir string) error {
 		filtered = append(filtered, line)
 	}
 	content = []byte(strings.Join(filtered, "\n"))
+
+	// Remove todoUC parameter from newRouter
+	content = removeLineContaining(content, "todoUC todo.UseCase,")
+
+	// Remove todoUC from RegisterRoutes calls — handle patterns like:
+	// echoAdapter.RegisterRoutes(e, healthUC, todoUC, rbac, authenticator)
+	// → echoAdapter.RegisterRoutes(e, healthUC, rbac, authenticator)
+	content = bytes.ReplaceAll(content, []byte("healthUC, todoUC, rbac, authenticator)"), []byte("healthUC, rbac, authenticator)"))
 
 	return writeFile(path, content)
 }
@@ -570,4 +568,37 @@ func writeFile(path string, content []byte) error {
 		str = strings.ReplaceAll(str, "\n\n\n", "\n\n")
 	}
 	return os.WriteFile(path, []byte(str), 0o644)
+}
+
+// RegenerateSwagger deletes stale docs/ and regenerates via swag init.
+func RegenerateSwagger(dir string) error {
+	docsDir := filepath.Join(dir, "docs")
+
+	// Remove existing stale docs
+	if err := os.RemoveAll(docsDir); err != nil {
+		return fmt.Errorf("could not remove stale docs: %w", err)
+	}
+
+	// Ensure swag is installed
+	if err := ensureSwag(); err != nil {
+		return fmt.Errorf("could not install swag: %w", err)
+	}
+
+	// Run swag init
+	fmt.Println("Regenerating swagger docs...")
+	if err := runInDir(dir, "swag", "init", "-g", "cmd/http/main.go", "-o", "./docs", "--parseDependency", "--parseInternal"); err != nil {
+		return fmt.Errorf("swag init failed: %w", err)
+	}
+
+	return nil
+}
+
+// ensureSwag checks if swag is on PATH; if not, installs it.
+func ensureSwag() error {
+	_, err := exec.LookPath("swag")
+	if err == nil {
+		return nil
+	}
+	fmt.Println("Installing swag...")
+	return runInDir("", "go", "install", "github.com/swaggo/swag/cmd/swag@latest")
 }

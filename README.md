@@ -16,6 +16,7 @@ kyan init <project-name>
   - Prompts whether to keep the **todo** template module — if declined, removes `domain/entity/todo.go`, `domain/error/todo.go`, `port/inbound/todo/`, `port/outbound/todo.go`, `usecase/todo.go`, `adapter/outbound/todo/`, `adapter/inbound/*/todo.go`, and all todo-related wiring/routes
 - Prompts whether to keep the **auth** template module — if declined, removes `domain/entity/user.go`, `domain/error/auth.go`, `port/inbound/auth/`, `port/outbound/user.go`, `usecase/auth.go`, `adapter/outbound/user/`, `adapter/inbound/*/auth.go`, and all auth-related wiring/routes
 - Rewrites `go.mod` to use the new module path
+- Regenerates swagger docs via `swag init` when template modules are removed
 - Cleans up vendor and re-vendors dependencies
 
 ### `kyan generate` (or `kyan g`)
@@ -47,6 +48,19 @@ Flags:
 - `--auth` — add RBAC permission checks on routes (default: false)
 
 After generation, kyan updates the DI wiring in `cmd/http/service.go` and `cmd/http/router.go` to register the new module.
+
+#### `kyan generate swagger`
+
+Regenerates the swagger docs (`docs/`) from source annotations:
+
+```bash
+kyan generate swagger
+```
+
+- Deletes the stale `docs/` directory
+- Auto-installs `swag` if not found on `PATH`
+- Runs `swag init -g cmd/http/main.go -o ./docs --parseDependency --parseInternal`
+- Run this after `kyan generate module` or after modifying handler annotations
 
 ### `kyan ai`
 

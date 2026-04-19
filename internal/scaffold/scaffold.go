@@ -127,6 +127,14 @@ func Init(opts InitOptions) error {
 		fmt.Printf("warning: go mod vendor failed: %v\n", err)
 	}
 
+	// 8. Regenerate swagger docs (needed when modules were removed)
+	if !opts.KeepTodo || !opts.KeepAuth {
+		if err := RegenerateSwagger(projectDir); err != nil {
+			fmt.Printf("warning: swagger regeneration failed: %v\n", err)
+			fmt.Println("You can regenerate manually with: kyan generate swagger")
+		}
+	}
+
 	fmt.Printf("\nProject %s initialized successfully!\n", opts.ProjectName)
 	fmt.Printf("cd %s to get started.\n", projectDir)
 	return nil
