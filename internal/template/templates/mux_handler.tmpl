@@ -1,0 +1,87 @@
+package mux
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"{{ .ModulePath }}/port/inbound/{{ .ModuleNameLower }}"
+	"github.com/AndreeJait/go-utility/v2/authw"
+	"github.com/AndreeJait/go-utility/v2/httpw/muxw"
+	"github.com/AndreeJait/go-utility/v2/responsew"
+	"github.com/AndreeJait/go-utility/v2/statusw"
+	"github.com/gorilla/mux"
+)
+
+// register{{ .ModuleName }}Routes adds {{ .ModuleNameLower }} CRUD routes to the Mux subrouter with RBAC.
+func register{{ .ModuleName }}Routes(r *mux.Router, {{ .ModuleNameLower }}UC {{ .ModuleNameLower }}.UseCase, rbac *authw.RBAC) {
+{{- if .WithAuth }}
+	r.Handle("/{{ .ModuleNameLower }}s", muxw.RequirePermission(rbac, "{{ .ModuleNameLower }}s:write")(http.HandlerFunc(muxw.Bind(func(r *http.Request) (any, error) {
+{{- else }}
+	r.Handle("/{{ .ModuleNameLower }}s", http.HandlerFunc(muxw.Bind(func(r *http.Request) (any, error) {
+{{- end }}
+		var input {{ .ModuleNameLower }}.Create{{ .ModuleName }}Input
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			return nil, statusw.InvalidReqParam.WithCustomMessage("invalid request body").WithError(err)
+		}
+		{{ .ModuleNameLower }}, err := {{ .ModuleNameLower }}UC.Create(r.Context(), input)
+		if err != nil {
+			return nil, err
+		}
+		return responsew.Success({{ .ModuleNameLower }}, "{{ .ModuleName }} created"), nil
+	})))).Methods(http.MethodPost)
+
+{{- if .WithAuth }}
+	r.Handle("/{{ .ModuleNameLower }}s/{id}", muxw.RequirePermission(rbac, "{{ .ModuleNameLower }}s:read")(http.HandlerFunc(muxw.Bind(func(r *http.Request) (any, error) {
+{{- else }}
+	r.Handle("/{{ .ModuleNameLower }}s/{id}", http.HandlerFunc(muxw.Bind(func(r *http.Request) (any, error) {
+{{- end }}
+		id := mux.Vars(r)["id"]
+		{{ .ModuleNameLower }}, err := {{ .ModuleNameLower }}UC.GetByID(r.Context(), id)
+		if err != nil {
+			return nil, err
+		}
+		return responsew.Success({{ .ModuleNameLower }}, "{{ .ModuleName }} retrieved"), nil
+	})))).Methods(http.MethodGet)
+
+{{- if .WithAuth }}
+	r.Handle("/{{ .ModuleNameLower }}s", muxw.RequirePermission(rbac, "{{ .ModuleNameLower }}s:read")(http.HandlerFunc(muxw.Bind(func(r *http.Request) (any, error) {
+{{- else }}
+	r.Handle("/{{ .ModuleNameLower }}s", http.HandlerFunc(muxw.Bind(func(r *http.Request) (any, error) {
+{{- end }}
+		pagination := muxw.ParsePagination(r)
+		{{ .ModuleNameLower }}s, totalCount, err := {{ .ModuleNameLower }}UC.List(r.Context(), pagination.Page, pagination.PerPage)
+		if err != nil {
+			return nil, err
+		}
+		return pagination.ToResponse({{ .ModuleNameLower }}s, totalCount, "{{ .ModuleName }}s retrieved"), nil
+	})))).Methods(http.MethodGet)
+
+{{- if .WithAuth }}
+	r.Handle("/{{ .ModuleNameLower }}s/{id}", muxw.RequirePermission(rbac, "{{ .ModuleNameLower }}s:write")(http.HandlerFunc(muxw.Bind(func(r *http.Request) (any, error) {
+{{- else }}
+	r.Handle("/{{ .ModuleNameLower }}s/{id}", http.HandlerFunc(muxw.Bind(func(r *http.Request) (any, error) {
+{{- end }}
+		var input {{ .ModuleNameLower }}.Update{{ .ModuleName }}Input
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			return nil, statusw.InvalidReqParam.WithCustomMessage("invalid request body").WithError(err)
+		}
+		id := mux.Vars(r)["id"]
+		{{ .ModuleNameLower }}, err := {{ .ModuleNameLower }}UC.Update(r.Context(), id, input)
+		if err != nil {
+			return nil, err
+		}
+		return responsew.Success({{ .ModuleNameLower }}, "{{ .ModuleName }} updated"), nil
+	})))).Methods(http.MethodPut)
+
+{{- if .WithAuth }}
+	r.Handle("/{{ .ModuleNameLower }}s/{id}", muxw.RequirePermission(rbac, "{{ .ModuleNameLower }}s:delete")(http.HandlerFunc(muxw.Bind(func(r *http.Request) (any, error) {
+{{- else }}
+	r.Handle("/{{ .ModuleNameLower }}s/{id}", http.HandlerFunc(muxw.Bind(func(r *http.Request) (any, error) {
+{{- end }}
+		id := mux.Vars(r)["id"]
+		if err := {{ .ModuleNameLower }}UC.Delete(r.Context(), id); err != nil {
+			return nil, err
+		}
+		return responsew.Success(nil, "{{ .ModuleName }} deleted"), nil
+	})))).Methods(http.MethodDelete)
+}

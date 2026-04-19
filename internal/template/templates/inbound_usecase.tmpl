@@ -1,0 +1,16 @@
+package {{ .ModuleNameLower }}
+
+import (
+	"context"
+
+	"{{ .ModulePath }}/domain/entity"
+)
+
+// UseCase defines the inbound port for {{ .ModuleNameLower }} operations.
+type UseCase interface {
+	Create(ctx context.Context, input Create{{ .ModuleName }}Input) (*entity.{{ .ModuleName }}, error)
+	GetByID(ctx context.Context, id string) (*entity.{{ .ModuleName }}, error)
+	List(ctx context.Context, page, perPage int) ([]entity.{{ .ModuleName }}, int64, error)
+	Update(ctx context.Context, id string, input Update{{ .ModuleName }}Input) (*entity.{{ .ModuleName }}, error)
+	Delete(ctx context.Context, id string) error
+}

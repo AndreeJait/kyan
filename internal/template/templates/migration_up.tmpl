@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS {{ .ModuleNameLower }}s (
+    id          VARCHAR(36) PRIMARY KEY,
+{{- range .Fields }}
+    {{ .NameLower }} {{ .SQLType }}{{ if .SQLDefault }} {{ .SQLDefault }}{{ end }},
+{{- end }}
+    created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);

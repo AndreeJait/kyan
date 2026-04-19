@@ -1,0 +1,15 @@
+package {{ .ModuleNameLower }}
+
+// Create{{ .ModuleName }}Input holds the data needed to create a new {{ .ModuleNameLower }}.
+type Create{{ .ModuleName }}Input struct {
+{{- range .Fields }}
+	{{ .Name }} {{ .GoType }} `json:"{{ .NameLower }}"`
+{{- end }}
+}
+
+// Update{{ .ModuleName }}Input holds the data needed to update a {{ .ModuleNameLower }}.
+type Update{{ .ModuleName }}Input struct {
+{{- range .Fields }}
+	{{ .Name }} *{{ .GoType }} `json:"{{ .NameLower }}"`
+{{- end }}
+}

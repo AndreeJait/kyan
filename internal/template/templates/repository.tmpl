@@ -1,0 +1,53 @@
+package {{ .ModuleNameLower }}
+
+import (
+	"context"
+
+	"{{ .ModulePath }}/domain/entity"
+	portOutbound "{{ .ModulePath }}/port/outbound"
+	"gorm.io/gorm"
+)
+
+type repository struct {
+	db *gorm.DB
+}
+
+// NewRepository creates a new {{ .ModuleName }}Repository backed by GORM.
+func NewRepository(db *gorm.DB) portOutbound.{{ .ModuleName }}Repository {
+	return &repository{db: db}
+}
+
+func (r *repository) Create(ctx context.Context, {{ .ModuleNameLower }} *entity.{{ .ModuleName }}) error {
+	return r.db.WithContext(ctx).Create({{ .ModuleNameLower }}).Error
+}
+
+func (r *repository) GetByID(ctx context.Context, id string) (*entity.{{ .ModuleName }}, error) {
+	var {{ .ModuleNameLower }} entity.{{ .ModuleName }}
+	if err := r.db.WithContext(ctx).First(&{{ .ModuleNameLower }}, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &{{ .ModuleNameLower }}, nil
+}
+
+func (r *repository) List(ctx context.Context, offset, limit int) ([]entity.{{ .ModuleName }}, int64, error) {
+	var {{ .ModuleNameLower }}s []entity.{{ .ModuleName }}
+	var totalCount int64
+
+	if err := r.db.WithContext(ctx).Model(&entity.{{ .ModuleName }}{}).Count(&totalCount).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Order("created_at DESC").Find(&{{ .ModuleNameLower }}s).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return {{ .ModuleNameLower }}s, totalCount, nil
+}
+
+func (r *repository) Update(ctx context.Context, {{ .ModuleNameLower }} *entity.{{ .ModuleName }}) error {
+	return r.db.WithContext(ctx).Save({{ .ModuleNameLower }}).Error
+}
+
+func (r *repository) Delete(ctx context.Context, id string) error {
+	return r.db.WithContext(ctx).Delete(&entity.{{ .ModuleName }}, "id = ?", id).Error
+}

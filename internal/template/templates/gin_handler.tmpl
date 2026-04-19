@@ -1,0 +1,81 @@
+package gin
+
+import (
+	"{{ .ModulePath }}/port/inbound/{{ .ModuleNameLower }}"
+	"github.com/AndreeJait/go-utility/v2/authw"
+	"github.com/AndreeJait/go-utility/v2/httpw/ginw"
+	"github.com/AndreeJait/go-utility/v2/responsew"
+	"github.com/AndreeJait/go-utility/v2/statusw"
+	"github.com/gin-gonic/gin"
+)
+
+// register{{ .ModuleName }}Routes adds {{ .ModuleNameLower }} CRUD routes to the Gin group with RBAC.
+func register{{ .ModuleName }}Routes(g *gin.RouterGroup, {{ .ModuleNameLower }}UC {{ .ModuleNameLower }}.UseCase, rbac *authw.RBAC) {
+{{- if .WithAuth }}
+	g.POST("/{{ .ModuleNameLower }}s", ginw.RequirePermission(rbac, "{{ .ModuleNameLower }}s:write"), ginw.Bind(func(c *gin.Context) (any, error) {
+{{- else }}
+	g.POST("/{{ .ModuleNameLower }}s", ginw.Bind(func(c *gin.Context) (any, error) {
+{{- end }}
+		var input {{ .ModuleNameLower }}.Create{{ .ModuleName }}Input
+		if err := c.ShouldBindJSON(&input); err != nil {
+			return nil, statusw.InvalidReqParam.WithCustomMessage("invalid request body").WithError(err)
+		}
+		{{ .ModuleNameLower }}, err := {{ .ModuleNameLower }}UC.Create(c.Request.Context(), input)
+		if err != nil {
+			return nil, err
+		}
+		return responsew.Success({{ .ModuleNameLower }}, "{{ .ModuleName }} created"), nil
+	}))
+
+{{- if .WithAuth }}
+	g.GET("/{{ .ModuleNameLower }}s/:id", ginw.RequirePermission(rbac, "{{ .ModuleNameLower }}s:read"), ginw.Bind(func(c *gin.Context) (any, error) {
+{{- else }}
+	g.GET("/{{ .ModuleNameLower }}s/:id", ginw.Bind(func(c *gin.Context) (any, error) {
+{{- end }}
+		{{ .ModuleNameLower }}, err := {{ .ModuleNameLower }}UC.GetByID(c.Request.Context(), c.Param("id"))
+		if err != nil {
+			return nil, err
+		}
+		return responsew.Success({{ .ModuleNameLower }}, "{{ .ModuleName }} retrieved"), nil
+	}))
+
+{{- if .WithAuth }}
+	g.GET("/{{ .ModuleNameLower }}s", ginw.RequirePermission(rbac, "{{ .ModuleNameLower }}s:read"), ginw.Bind(func(c *gin.Context) (any, error) {
+{{- else }}
+	g.GET("/{{ .ModuleNameLower }}s", ginw.Bind(func(c *gin.Context) (any, error) {
+{{- end }}
+		pagination := ginw.ParsePagination(c)
+		{{ .ModuleNameLower }}s, totalCount, err := {{ .ModuleNameLower }}UC.List(c.Request.Context(), pagination.Page, pagination.PerPage)
+		if err != nil {
+			return nil, err
+		}
+		return pagination.ToResponse({{ .ModuleNameLower }}s, totalCount, "{{ .ModuleName }}s retrieved"), nil
+	}))
+
+{{- if .WithAuth }}
+	g.PUT("/{{ .ModuleNameLower }}s/:id", ginw.RequirePermission(rbac, "{{ .ModuleNameLower }}s:write"), ginw.Bind(func(c *gin.Context) (any, error) {
+{{- else }}
+	g.PUT("/{{ .ModuleNameLower }}s/:id", ginw.Bind(func(c *gin.Context) (any, error) {
+{{- end }}
+		var input {{ .ModuleNameLower }}.Update{{ .ModuleName }}Input
+		if err := c.ShouldBindJSON(&input); err != nil {
+			return nil, statusw.InvalidReqParam.WithCustomMessage("invalid request body").WithError(err)
+		}
+		{{ .ModuleNameLower }}, err := {{ .ModuleNameLower }}UC.Update(c.Request.Context(), c.Param("id"), input)
+		if err != nil {
+			return nil, err
+		}
+		return responsew.Success({{ .ModuleNameLower }}, "{{ .ModuleName }} updated"), nil
+	}))
+
+{{- if .WithAuth }}
+	g.DELETE("/{{ .ModuleNameLower }}s/:id", ginw.RequirePermission(rbac, "{{ .ModuleNameLower }}s:delete"), ginw.Bind(func(c *gin.Context) (any, error) {
+{{- else }}
+	g.DELETE("/{{ .ModuleNameLower }}s/:id", ginw.Bind(func(c *gin.Context) (any, error) {
+{{- end }}
+		if err := {{ .ModuleNameLower }}UC.Delete(c.Request.Context(), c.Param("id")); err != nil {
+			return nil, err
+		}
+		return responsew.Success(nil, "{{ .ModuleName }} deleted"), nil
+	}))
+}

@@ -1,0 +1,158 @@
+package echo
+
+import (
+	"github.com/AndreeJait/go-utility/v2/authw"
+	"{{ .ModulePath }}/domain/entity"
+	"{{ .ModulePath }}/port/inbound/{{ .ModuleNameLower }}"
+	"github.com/AndreeJait/go-utility/v2/httpw/echow"
+	"github.com/AndreeJait/go-utility/v2/responsew"
+	"github.com/AndreeJait/go-utility/v2/statusw"
+	"github.com/labstack/echo/v5"
+)
+
+// Required for swagger annotations
+var _ = entity.{{ .ModuleName }}{}
+
+// register{{ .ModuleName }}Routes adds {{ .ModuleNameLower }} CRUD routes to the Echo group with RBAC.
+func register{{ .ModuleName }}Routes(g *echo.Group, {{ .ModuleNameLower }}UC {{ .ModuleNameLower }}.UseCase, rbac *authw.RBAC) {
+{{- if .WithAuth }}
+	g.POST("/{{ .ModuleNameLower }}s", echow.Bind(create{{ .ModuleName }}({{ .ModuleNameLower }}UC)), echow.RequirePermission(rbac, "{{ .ModuleNameLower }}s:write"))
+	g.GET("/{{ .ModuleNameLower }}s/:id", echow.Bind(get{{ .ModuleName }}({{ .ModuleNameLower }}UC)), echow.RequirePermission(rbac, "{{ .ModuleNameLower }}s:read"))
+	g.GET("/{{ .ModuleNameLower }}s", echow.Bind(list{{ .ModuleName }}s({{ .ModuleNameLower }}UC)), echow.RequirePermission(rbac, "{{ .ModuleNameLower }}s:read"))
+	g.PUT("/{{ .ModuleNameLower }}s/:id", echow.Bind(update{{ .ModuleName }}({{ .ModuleNameLower }}UC)), echow.RequirePermission(rbac, "{{ .ModuleNameLower }}s:write"))
+	g.DELETE("/{{ .ModuleNameLower }}s/:id", echow.Bind(delete{{ .ModuleName }}({{ .ModuleNameLower }}UC)), echow.RequirePermission(rbac, "{{ .ModuleNameLower }}s:delete"))
+{{- else }}
+	g.POST("/{{ .ModuleNameLower }}s", echow.Bind(create{{ .ModuleName }}({{ .ModuleNameLower }}UC)))
+	g.GET("/{{ .ModuleNameLower }}s/:id", echow.Bind(get{{ .ModuleName }}({{ .ModuleNameLower }}UC)))
+	g.GET("/{{ .ModuleNameLower }}s", echow.Bind(list{{ .ModuleName }}s({{ .ModuleNameLower }}UC)))
+	g.PUT("/{{ .ModuleNameLower }}s/:id", echow.Bind(update{{ .ModuleName }}({{ .ModuleNameLower }}UC)))
+	g.DELETE("/{{ .ModuleNameLower }}s/:id", echow.Bind(delete{{ .ModuleName }}({{ .ModuleNameLower }}UC)))
+{{- end }}
+}
+
+// create{{ .ModuleName }} returns a handler that creates a new {{ .ModuleNameLower }}.
+//
+// @Summary      Create a {{ .ModuleNameLower }}
+// @Description  Create a new {{ .ModuleNameLower }} item
+// @Tags         {{ .ModuleNameLower }}s
+// @Accept       json
+// @Produce      json
+// @Param        body  body      {{ .ModuleNameLower }}.Create{{ .ModuleName }}Input  true  "{{ .ModuleName }} data"
+// @Success      201   {object}  responsew.BaseResponse{data=entity.{{ .ModuleName }}}
+// @Failure      400   {object}  responsew.BaseResponse
+{{- if .WithAuth }}
+// @Security     BearerAuth
+{{- end }}
+// @Router       /{{ .ModuleNameLower }}s [post]
+func create{{ .ModuleName }}({{ .ModuleNameLower }}UC {{ .ModuleNameLower }}.UseCase) func(c *echo.Context) (any, error) {
+	return func(c *echo.Context) (any, error) {
+		var input {{ .ModuleNameLower }}.Create{{ .ModuleName }}Input
+		if err := c.Bind(&input); err != nil {
+			return nil, statusw.InvalidReqParam.WithCustomMessage("invalid request body").WithError(err)
+		}
+		{{ .ModuleNameLower }}, err := {{ .ModuleNameLower }}UC.Create(c.Request().Context(), input)
+		if err != nil {
+			return nil, err
+		}
+		return responsew.Success({{ .ModuleNameLower }}, "{{ .ModuleName }} created"), nil
+	}
+}
+
+// get{{ .ModuleName }} returns a handler that gets a {{ .ModuleNameLower }} by ID.
+//
+// @Summary      Get a {{ .ModuleNameLower }}
+// @Description  Get a {{ .ModuleNameLower }} by ID
+// @Tags         {{ .ModuleNameLower }}s
+// @Produce      json
+// @Param        id   path      string  true  "{{ .ModuleName }} ID"
+// @Success      200  {object}  responsew.BaseResponse{data=entity.{{ .ModuleName }}}
+// @Failure      404  {object}  responsew.BaseResponse
+{{- if .WithAuth }}
+// @Security     BearerAuth
+{{- end }}
+// @Router       /{{ .ModuleNameLower }}s/{id} [get]
+func get{{ .ModuleName }}({{ .ModuleNameLower }}UC {{ .ModuleNameLower }}.UseCase) func(c *echo.Context) (any, error) {
+	return func(c *echo.Context) (any, error) {
+		{{ .ModuleNameLower }}, err := {{ .ModuleNameLower }}UC.GetByID(c.Request().Context(), c.Param("id"))
+		if err != nil {
+			return nil, err
+		}
+		return responsew.Success({{ .ModuleNameLower }}, "{{ .ModuleName }} retrieved"), nil
+	}
+}
+
+// list{{ .ModuleName }}s returns a handler that lists {{ .ModuleNameLower }}s with pagination.
+//
+// @Summary      List {{ .ModuleNameLower }}s
+// @Description  Get a paginated list of {{ .ModuleNameLower }}s
+// @Tags         {{ .ModuleNameLower }}s
+// @Produce      json
+// @Param        page      query  int  false  "Page number (default: 1)"
+// @Param        per_page  query  int  false  "Items per page (default: 10, max: 100)"
+// @Success      200  {object}  responsew.BaseResponse{data=responsew.PaginatedData{items=[]entity.{{ .ModuleName }}}}
+{{- if .WithAuth }}
+// @Security     BearerAuth
+{{- end }}
+// @Router       /{{ .ModuleNameLower }}s [get]
+func list{{ .ModuleName }}s({{ .ModuleNameLower }}UC {{ .ModuleNameLower }}.UseCase) func(c *echo.Context) (any, error) {
+	return func(c *echo.Context) (any, error) {
+		pagination := echow.ParsePagination(c)
+		{{ .ModuleNameLower }}s, totalCount, err := {{ .ModuleNameLower }}UC.List(c.Request().Context(), pagination.Page, pagination.PerPage)
+		if err != nil {
+			return nil, err
+		}
+		return pagination.ToResponse({{ .ModuleNameLower }}s, totalCount, "{{ .ModuleName }}s retrieved"), nil
+	}
+}
+
+// update{{ .ModuleName }} returns a handler that updates a {{ .ModuleNameLower }} by ID.
+//
+// @Summary      Update a {{ .ModuleNameLower }}
+// @Description  Update a {{ .ModuleNameLower }} by ID
+// @Tags         {{ .ModuleNameLower }}s
+// @Accept       json
+// @Produce      json
+// @Param        id    path      string                                  true  "{{ .ModuleName }} ID"
+// @Param        body  body      {{ .ModuleNameLower }}.Update{{ .ModuleName }}Input  true  "Update data"
+// @Success      200   {object}  responsew.BaseResponse{data=entity.{{ .ModuleName }}}
+// @Failure      400   {object}  responsew.BaseResponse
+// @Failure      404   {object}  responsew.BaseResponse
+{{- if .WithAuth }}
+// @Security     BearerAuth
+{{- end }}
+// @Router       /{{ .ModuleNameLower }}s/{id} [put]
+func update{{ .ModuleName }}({{ .ModuleNameLower }}UC {{ .ModuleNameLower }}.UseCase) func(c *echo.Context) (any, error) {
+	return func(c *echo.Context) (any, error) {
+		var input {{ .ModuleNameLower }}.Update{{ .ModuleName }}Input
+		if err := c.Bind(&input); err != nil {
+			return nil, statusw.InvalidReqParam.WithCustomMessage("invalid request body").WithError(err)
+		}
+		{{ .ModuleNameLower }}, err := {{ .ModuleNameLower }}UC.Update(c.Request().Context(), c.Param("id"), input)
+		if err != nil {
+			return nil, err
+		}
+		return responsew.Success({{ .ModuleNameLower }}, "{{ .ModuleName }} updated"), nil
+	}
+}
+
+// delete{{ .ModuleName }} returns a handler that deletes a {{ .ModuleNameLower }} by ID.
+//
+// @Summary      Delete a {{ .ModuleNameLower }}
+// @Description  Delete a {{ .ModuleNameLower }} by ID
+// @Tags         {{ .ModuleNameLower }}s
+// @Produce      json
+// @Param        id   path      string  true  "{{ .ModuleName }} ID"
+// @Success      200  {object}  responsew.BaseResponse
+// @Failure      404  {object}  responsew.BaseResponse
+{{- if .WithAuth }}
+// @Security     BearerAuth
+{{- end }}
+// @Router       /{{ .ModuleNameLower }}s/{id} [delete]
+func delete{{ .ModuleName }}({{ .ModuleNameLower }}UC {{ .ModuleNameLower }}.UseCase) func(c *echo.Context) (any, error) {
+	return func(c *echo.Context) (any, error) {
+		if err := {{ .ModuleNameLower }}UC.Delete(c.Request().Context(), c.Param("id")); err != nil {
+			return nil, err
+		}
+		return responsew.Success(nil, "{{ .ModuleName }} deleted"), nil
+	}
+}

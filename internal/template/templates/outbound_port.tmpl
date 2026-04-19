@@ -1,0 +1,16 @@
+package outbound
+
+import (
+	"context"
+
+	"{{ .ModulePath }}/domain/entity"
+)
+
+// {{ .ModuleName }}Repository defines the outbound port for {{ .ModuleNameLower }} persistence.
+type {{ .ModuleName }}Repository interface {
+	Create(ctx context.Context, {{ .ModuleNameLower }} *entity.{{ .ModuleName }}) error
+	GetByID(ctx context.Context, id string) (*entity.{{ .ModuleName }}, error)
+	List(ctx context.Context, offset, limit int) ([]entity.{{ .ModuleName }}, int64, error)
+	Update(ctx context.Context, {{ .ModuleNameLower }} *entity.{{ .ModuleName }}) error
+	Delete(ctx context.Context, id string) error
+}

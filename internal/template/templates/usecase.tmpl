@@ -1,0 +1,79 @@
+package usecase
+
+import (
+	"context"
+	"fmt"
+
+	"{{ .ModulePath }}/domain/entity"
+	domainError "{{ .ModulePath }}/domain/error"
+	"{{ .ModulePath }}/port/inbound/{{ .ModuleNameLower }}"
+	"{{ .ModulePath }}/port/outbound"
+	"github.com/google/uuid"
+)
+
+type {{ .ModuleNameLower }}UseCase struct {
+	repo outbound.{{ .ModuleName }}Repository
+}
+
+// New{{ .ModuleName }}UseCase creates a new {{ .ModuleName }}UseCase implementation.
+func New{{ .ModuleName }}UseCase(repo outbound.{{ .ModuleName }}Repository) {{ .ModuleNameLower }}.UseCase {
+	return &{{ .ModuleNameLower }}UseCase{repo: repo}
+}
+
+func (u *{{ .ModuleNameLower }}UseCase) Create(ctx context.Context, input {{ .ModuleNameLower }}.Create{{ .ModuleName }}Input) (*entity.{{ .ModuleName }}, error) {
+	{{ .ModuleNameLower }} := &entity.{{ .ModuleName }}{
+		ID: uuid.New().String(),
+{{- range .Fields }}
+		{{ .Name }}: input.{{ .Name }},
+{{- end }}
+	}
+
+	if err := u.repo.Create(ctx, {{ .ModuleNameLower }}); err != nil {
+		return nil, fmt.Errorf("create {{ .ModuleNameLower }}: %w", err)
+	}
+
+	return {{ .ModuleNameLower }}, nil
+}
+
+func (u *{{ .ModuleNameLower }}UseCase) GetByID(ctx context.Context, id string) (*entity.{{ .ModuleName }}, error) {
+	{{ .ModuleNameLower }}, err := u.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, domainError.Err{{ .ModuleName }}NotFound.WithError(err)
+	}
+	return {{ .ModuleNameLower }}, nil
+}
+
+func (u *{{ .ModuleNameLower }}UseCase) List(ctx context.Context, page, perPage int) ([]entity.{{ .ModuleName }}, int64, error) {
+	offset := (page - 1) * perPage
+	{{ .ModuleNameLower }}s, totalCount, err := u.repo.List(ctx, offset, perPage)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list {{ .ModuleNameLower }}s: %w", err)
+	}
+	return {{ .ModuleNameLower }}s, totalCount, nil
+}
+
+func (u *{{ .ModuleNameLower }}UseCase) Update(ctx context.Context, id string, input {{ .ModuleNameLower }}.Update{{ .ModuleName }}Input) (*entity.{{ .ModuleName }}, error) {
+	{{ .ModuleNameLower }}, err := u.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, domainError.Err{{ .ModuleName }}NotFound.WithError(err)
+	}
+
+{{- range .Fields }}
+	if input.{{ .Name }} != nil {
+		{{ .ModuleNameLower }}.{{ .Name }} = *input.{{ .Name }}
+	}
+{{- end }}
+
+	if err := u.repo.Update(ctx, {{ .ModuleNameLower }}); err != nil {
+		return nil, fmt.Errorf("update {{ .ModuleNameLower }}: %w", err)
+	}
+
+	return {{ .ModuleNameLower }}, nil
+}
+
+func (u *{{ .ModuleNameLower }}UseCase) Delete(ctx context.Context, id string) error {
+	if err := u.repo.Delete(ctx, id); err != nil {
+		return domainError.Err{{ .ModuleName }}NotFound.WithError(err)
+	}
+	return nil
+}

@@ -1,0 +1,17 @@
+package entity
+
+import "time"
+{{- if .NeedsDatatypesImport }}
+
+import "gorm.io/datatypes"
+{{- end }}
+
+// {{ .ModuleName }} represents a {{ .ModuleNameLower }} entity.
+type {{ .ModuleName }} struct {
+	ID        string    `json:"id" gorm:"primaryKey"`
+{{- range .Fields }}
+	{{ .Name }} {{ .GoType }} `json:"{{ .NameLower }}" {{ .GormTag }}`
+{{- end }}
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+}

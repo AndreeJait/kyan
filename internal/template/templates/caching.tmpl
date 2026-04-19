@@ -1,0 +1,92 @@
+package {{ .ModuleNameLower }}
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"{{ .ModulePath }}/domain/entity"
+	portOutbound "{{ .ModulePath }}/port/outbound"
+	"github.com/redis/go-redis/v9"
+)
+
+// cachingRepository wraps a {{ .ModuleName }}Repository with Redis caching.
+// Implements the Decorator pattern — the use case only sees {{ .ModuleName }}Repository.
+type cachingRepository struct {
+	inner  portOutbound.{{ .ModuleName }}Repository
+	client *redis.Client
+	ttl    time.Duration
+}
+
+// NewCachingRepository wraps the given repository with Redis caching.
+// Pass nil client to disable caching (falls through to inner repository).
+func NewCachingRepository(inner portOutbound.{{ .ModuleName }}Repository, client *redis.Client) portOutbound.{{ .ModuleName }}Repository {
+	return &cachingRepository{
+		inner:  inner,
+		client: client,
+		ttl:    5 * time.Minute,
+	}
+}
+
+func (r *cachingRepository) Create(ctx context.Context, {{ .ModuleNameLower }} *entity.{{ .ModuleName }}) error {
+	if err := r.inner.Create(ctx, {{ .ModuleNameLower }}); err != nil {
+		return err
+	}
+	r.invalidateCache(ctx, {{ .ModuleNameLower }}.ID)
+	return nil
+}
+
+func (r *cachingRepository) GetByID(ctx context.Context, id string) (*entity.{{ .ModuleName }}, error) {
+	if r.client != nil {
+		cached, err := r.client.Get(ctx, cacheKey(id)).Bytes()
+		if err == nil {
+			var {{ .ModuleNameLower }} entity.{{ .ModuleName }}
+			if err := json.Unmarshal(cached, &{{ .ModuleNameLower }}); err == nil {
+				return &{{ .ModuleNameLower }}, nil
+			}
+		}
+	}
+
+	{{ .ModuleNameLower }}, err := r.inner.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.client != nil {
+		data, _ := json.Marshal({{ .ModuleNameLower }})
+		r.client.Set(ctx, cacheKey(id), data, r.ttl)
+	}
+
+	return {{ .ModuleNameLower }}, nil
+}
+
+func (r *cachingRepository) List(ctx context.Context, offset, limit int) ([]entity.{{ .ModuleName }}, int64, error) {
+	return r.inner.List(ctx, offset, limit)
+}
+
+func (r *cachingRepository) Update(ctx context.Context, {{ .ModuleNameLower }} *entity.{{ .ModuleName }}) error {
+	if err := r.inner.Update(ctx, {{ .ModuleNameLower }}); err != nil {
+		return err
+	}
+	r.invalidateCache(ctx, {{ .ModuleNameLower }}.ID)
+	return nil
+}
+
+func (r *cachingRepository) Delete(ctx context.Context, id string) error {
+	if err := r.inner.Delete(ctx, id); err != nil {
+		return err
+	}
+	r.invalidateCache(ctx, id)
+	return nil
+}
+
+func (r *cachingRepository) invalidateCache(ctx context.Context, id string) {
+	if r.client != nil {
+		r.client.Del(ctx, cacheKey(id))
+	}
+}
+
+func cacheKey(id string) string {
+	return fmt.Sprintf("{{ .ModuleNameLower }}:%s", id)
+}

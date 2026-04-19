@@ -1,0 +1,7 @@
+package error
+
+import "github.com/AndreeJait/go-utility/v2/statusw"
+
+var (
+	Err{{ .ModuleName }}NotFound = statusw.NotFound.WithCustomMessage("{{ .ModuleNameLower }} not found")
+)

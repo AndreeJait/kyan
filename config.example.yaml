@@ -1,0 +1,7 @@
+# Kyan configuration
+# Copy this file to ~/.kyan/config.yaml and customize.
+
+ai:
+  model: llama3                    # Ollama model for ai/ask/code commands
+  host: http://localhost:11434     # Ollama API host (local or cloud)
+  key: ""                          # API key for Ollama Cloud (leave empty for local)
