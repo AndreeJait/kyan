@@ -1,0 +1,149 @@
+name: Tag on Push to Master
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  create_tag_and_release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --tags --force
+
+      - name: Get latest tag
+        id: get_latest_tag
+        run: |
+          latest_tag=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+          echo "latest_tag=$latest_tag" >> "$GITHUB_OUTPUT"
+          echo "Latest tag: ${latest_tag:-<none>}"
+
+      - name: Determine bump type from commit messages
+        id: bump_type
+        run: |
+          previous_tag="${{ steps.get_latest_tag.outputs.latest_tag }}"
+
+          if [ -z "$previous_tag" ]; then
+            echo "bump=patch" >> "$GITHUB_OUTPUT"
+            echo "Bump: patch (no previous tag)"
+            exit 0
+          fi
+
+          # Check commit messages since last tag for bump hints
+          # feat! or BREAKING CHANGE -> major
+          # feat -> minor
+          # everything else -> patch
+          commits=$(git log "$previous_tag"..HEAD --pretty=format:"%s %b")
+
+          if echo "$commits" | grep -qE "(^| )feat!|BREAKING CHANGE"; then
+            echo "bump=major" >> "$GITHUB_OUTPUT"
+            echo "Bump: major (breaking change detected)"
+          elif echo "$commits" | grep -qE "^feat"; then
+            echo "bump=minor" >> "$GITHUB_OUTPUT"
+            echo "Bump: minor (feature detected)"
+          else
+            echo "bump=patch" >> "$GITHUB_OUTPUT"
+            echo "Bump: patch"
+          fi
+
+      - name: Calculate new tag
+        id: calculate_new_tag
+        run: |
+          latest_tag="${{ steps.get_latest_tag.outputs.latest_tag }}"
+          bump="${{ steps.bump_type.outputs.bump }}"
+
+          if [ -z "$latest_tag" ]; then
+            echo "new_tag=v0.1.0" >> "$GITHUB_OUTPUT"
+            echo "New tag: v0.1.0"
+            exit 0
+          fi
+
+          version="${latest_tag#v}"
+          IFS='.' read -r major minor patch <<< "$version"
+
+          major=${major:-0}
+          minor=${minor:-0}
+          patch=${patch:-0}
+
+          case "$bump" in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              patch=$((patch + 1))
+              ;;
+          esac
+
+          new_tag="v$major.$minor.$patch"
+          echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
+          echo "New tag: $new_tag"
+
+      - name: Ensure tag is unique
+        id: ensure_unique_tag
+        run: |
+          candidate="${{ steps.calculate_new_tag.outputs.new_tag }}"
+
+          # If tag exists on remote, bump patch until unique
+          while git ls-remote --tags origin "refs/tags/$candidate" | grep -q "refs/tags/$candidate"; do
+            version="${candidate#v}"
+            IFS='.' read -r major minor patch <<< "$version"
+            patch=$((patch + 1))
+            candidate="v$major.$minor.$patch"
+            echo "Tag exists, bumping to: $candidate"
+          done
+
+          echo "final_tag=$candidate" >> "$GITHUB_OUTPUT"
+          echo "Final tag: $candidate"
+
+      - name: Create Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          new_tag="${{ steps.ensure_unique_tag.outputs.final_tag }}"
+          git tag "$new_tag"
+          git push origin "$new_tag"
+
+      - name: Generate changelog
+        id: generate_changelog
+        run: |
+          previous_tag="${{ steps.get_latest_tag.outputs.latest_tag }}"
+
+          if [ -z "$previous_tag" ]; then
+            changelog=$(git log --pretty=format:"- %s" --reverse HEAD)
+          else
+            changelog=$(git log --pretty=format:"- %s" "$previous_tag"..HEAD)
+          fi
+
+          {
+            echo "changelog<<EOF"
+            echo "$changelog"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ensure_unique_tag.outputs.final_tag }}
+          body: |
+            Changes since ${{ steps.get_latest_tag.outputs.latest_tag }}:
+
+            ${{ steps.generate_changelog.outputs.changelog }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
