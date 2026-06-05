@@ -24,15 +24,15 @@ type GenerateRequest struct {
 }
 
 type GenerateResponse struct {
-	Model     string `json:"model"`
-	Response  string `json:"response"`
-	Done      bool   `json:"done"`
+	Model    string `json:"model"`
+	Response string `json:"response"`
+	Done     bool   `json:"done"`
 }
 
 type StreamToken struct {
-	Model     string `json:"model"`
-	Response  string `json:"response"`
-	Done      bool   `json:"done"`
+	Model    string `json:"model"`
+	Response string `json:"response"`
+	Done     bool   `json:"done"`
 }
 
 func NewClient(host, model, key string) *Client {

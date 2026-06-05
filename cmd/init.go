@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var initModulePath string
+
 var initCmd = &cobra.Command{
 	Use:   "init [project-name]",
 	Short: "Create a new hexagonal Go project from go-hex-boilerplate",
@@ -32,9 +34,9 @@ var initCmd = &cobra.Command{
 			projectName = filepath.Base(dir)
 		}
 
-		// Validate project name
-		if strings.Contains(projectName, "/") || strings.Contains(projectName, " ") {
-			fmt.Fprintf(cmd.ErrOrStderr(), "error: invalid project name: %q\n", projectName)
+		// Validate project name (only when not using a custom module path with slashes)
+		if initModulePath == "" && (strings.Contains(projectName, "/") || strings.Contains(projectName, " ")) {
+			fmt.Fprintf(cmd.ErrOrStderr(), "error: invalid project name: %q (use --module to specify a custom module path)\n", projectName)
 			return
 		}
 
@@ -44,6 +46,7 @@ var initCmd = &cobra.Command{
 
 		opts := scaffold.InitOptions{
 			ProjectName: projectName,
+			ModulePath:  initModulePath,
 			KeepTodo:    keepTodo,
 			KeepAuth:    keepAuth,
 			CurrentDir:  currentDir,
@@ -74,5 +77,6 @@ func promptYesNo(prompt string, defaultVal bool) bool {
 }
 
 func init() {
+	initCmd.Flags().StringVar(&initModulePath, "module", "", "Go module path (e.g., github.com/AndreeJait/kyan); defaults to github.com/AndreeJait/<project-name>")
 	rootCmd.AddCommand(initCmd)
 }

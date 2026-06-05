@@ -12,14 +12,14 @@ import (
 )
 
 var (
-	codeLayer   string
-	codeModule  string
-	codeImpl    string
-	codeMethod  string
-	codeName    string
-	codeModel   string
-	codeDryRun  bool
-	codeDiff    bool
+	codeLayer  string
+	codeModule string
+	codeImpl   string
+	codeMethod string
+	codeName   string
+	codeModel  string
+	codeDryRun bool
+	codeDiff   bool
 )
 
 var codeCmd = &cobra.Command{
