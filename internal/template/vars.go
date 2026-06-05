@@ -6,9 +6,9 @@ import (
 )
 
 type ModuleVars struct {
-	ModuleName      string  // e.g., "Product"
-	ModuleNameLower string  // e.g., "product"
-	ModulePath      string  // e.g., "github.com/user/project"
+	ModuleName      string // e.g., "Product"
+	ModuleNameLower string // e.g., "product"
+	ModulePath      string // e.g., "github.com/user/project"
 	Fields          []Field
 	WithCaching     bool
 	WithAuth        bool
@@ -25,9 +25,9 @@ type Field struct {
 }
 
 type FieldTypeInfo struct {
-	GoType   string
-	SQLType  string
-	SQLDefault string
+	GoType         string
+	SQLType        string
+	SQLDefault     string
 	NeedsDatatypes bool
 }
 

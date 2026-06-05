@@ -12,7 +12,7 @@ import (
 
 var (
 	askModel   string
-	askContext  string
+	askContext string
 	askVerbose bool
 )
 

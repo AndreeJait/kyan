@@ -13,14 +13,14 @@ import (
 )
 
 var (
-	fieldsStr string
+	fieldsStr   string
 	withCaching bool
-	withAuth   bool
+	withAuth    bool
 )
 
 var generateCmd = &cobra.Command{
-	Use:   "generate",
-	Short: "Generate hexagonal architecture code",
+	Use:     "generate",
+	Short:   "Generate hexagonal architecture code",
 	Aliases: []string{"g"},
 }
 

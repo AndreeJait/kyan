@@ -16,6 +16,7 @@ const boilerplateRepo = "https://github.com/AndreeJait/go-hex-boilerplate"
 
 type InitOptions struct {
 	ProjectName string
+	ModulePath  string // Go module path (e.g., "github.com/AndreeJait/kyan"); defaults to "github.com/AndreeJait/<ProjectName>"
 	KeepTodo    bool
 	KeepAuth    bool
 	CurrentDir  bool // when true, init in current directory instead of creating a new one
@@ -99,15 +100,22 @@ func Init(opts InitOptions) error {
 	}
 
 	// 4. Rewrite module path
+	modulePath := opts.ModulePath
+	if modulePath == "" {
+		modulePath = "github.com/AndreeJait/" + opts.ProjectName
+	}
 	oldModule := "github.com/AndreeJait/go-hex-boilerplate"
-	newModule := "github.com/AndreeJait/" + opts.ProjectName
-	fmt.Printf("Rewriting module path: %s -> %s\n", oldModule, newModule)
-	if err := rewriteModulePath(projectDir, oldModule, newModule); err != nil {
+	fmt.Printf("Rewriting module path: %s -> %s\n", oldModule, modulePath)
+	if err := rewriteModulePath(projectDir, oldModule, modulePath); err != nil {
 		return fmt.Errorf("could not rewrite module path: %w", err)
 	}
 
-	// 5. Rewrite config references
-	if err := rewriteConfigReferences(projectDir, "go-hex-boilerplate", opts.ProjectName); err != nil {
+	// 5. Rewrite config references — use the last segment of the module path as the app name
+	appName := opts.ProjectName
+	if parts := strings.Split(modulePath, "/"); len(parts) > 0 {
+		appName = parts[len(parts)-1]
+	}
+	if err := rewriteConfigReferences(projectDir, "go-hex-boilerplate", appName); err != nil {
 		return fmt.Errorf("could not rewrite config references: %w", err)
 	}
 
